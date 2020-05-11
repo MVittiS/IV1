@@ -1,0 +1,3 @@
+[submodule "VQLib"]
+	path = VQLib
+	url = https://github.com/MVittiS/VQLib
