@@ -2,8 +2,8 @@
 
 #define VQLIB_VERBOSE_OUTPUT 1
 
-#include "../VQAlgorithm.h"
-#include "../Support/PNGLoader.h"
+#include "VQLib/C++/VQAlgorithm.h"
+#include "Support/PNGLoader.h"
 
 #include <algorithm>
 #include <cassert>
@@ -173,12 +173,14 @@ FlexMatrix<T, width>  BlockRGBAddMean(
 int main(int argc, char **args) {
     constexpr size_t blockW = 4;
     constexpr size_t blockH = 4;
-    assert(argc > 2);
-    
+    if (argc < 3) {
+        printf("Usage: IV1compress(.exe) image_input.png image_output.png");
+    }
+
     printf("Reading image %s...", args[1]);
     const auto imagePath = args[1];
     const auto imageBlocks = BlockImage<blockW, blockH>(Support::LoadPNG(imagePath));
-    
+
     const auto blocksPalette = BlockRGBMean<float, 3 * blockW * blockH>(imageBlocks.data);
     const auto [dictPalette, idxPalette] = VQGenerateDictFast<float, 3, uint16_t>
                 (blocksPalette, 256, 1000);
