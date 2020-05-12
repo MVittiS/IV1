@@ -4,8 +4,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(MSVC_Generate_Profiling OFF)
-option(SIMD_ISA_MSVC AVX)
-option(SIMD_ISA_GCClang avx)
+set(SIMD_ISA_MSVC "AVX" CACHE STRING "SIMD Optimization Architecture for MSVC")
+set(SIMD_ISA_GCClang "avx" CACHE STRING "SIMD Optimization Architecture for GCC or Clang")
 
 project(IV1Compressor)
 find_package(PNG REQUIRED)
