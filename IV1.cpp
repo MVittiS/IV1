@@ -13,16 +13,53 @@ using namespace VQLib;
 
 template<size_t blockW, size_t blockH>
 struct BlockImage {
-    size_t nBlocksX, nBlocksY;
+    const size_t nBlocksX, nBlocksY;
+    const size_t actualW, actualH;
     static constexpr size_t channels = 3;
     FlexMatrix<float, blockW * blockH * channels> data;
 
-    BlockImage(const Support::RGB8Image& image) {
-        assert(image.width % blockW == 0);
-        assert(image.height % blockH == 0);
+    BlockImage(Support::RGB8Image image)
+    : nBlocksX((image.width + blockW - 1) / blockW)
+    , nBlocksY((image.height + blockH - 1) / blockH)
+    , actualW(image.width)
+    , actualH(image.height) {
 
-        nBlocksX = image.width / blockW;
-        nBlocksY = image.height / blockH;
+        // If the image's dimensions aren't a multiple of the block
+        //  dimensions, we have to pad the image. I'm choosing a
+        //  mirrored-repeat strategy here, to minimize discontinuities.
+        if (actualW % blockW != 0 || actualH % blockH != 0) {
+            Support::RGB8Image newImage;
+            newImage.width = nBlocksX * blockW;
+            newImage.height = image.height;
+            newImage.pixels.resize(newImage.width * newImage.height * channels);
+
+            const auto columnLeftover = newImage.width - image.width;
+            const auto rowLeftover = newImage.height - image.height;
+
+            const auto rowStride = image.width * channels;
+            const auto newRowStride = newImage.width * channels;
+
+            for (auto row = 0; row != image.height; ++row) {
+                std::copy_n(&image.pixels[row * rowStride], 
+                    rowStride, &newImage.pixels[row * newRowStride]);
+                for (auto column = 0; column != columnLeftover; ++column) {
+                    newImage.pixels[row * newRowStride + rowStride + channels * column + 0] = 
+                        image.pixels[(row + 1) * rowStride - (channels * (1 + column)) + 0];
+                    newImage.pixels[row * newRowStride + rowStride + channels * column + 1] = 
+                        image.pixels[(row + 1) * rowStride - (channels * (1 + column)) + 1];
+                    newImage.pixels[row * newRowStride + rowStride + channels * column + 2] = 
+                        image.pixels[(row + 1) * rowStride - (channels * (1 + column)) + 2];
+                }
+            }
+
+            for (auto row = 0; row != rowLeftover; ++row) {
+                std::copy_n(&newImage.pixels[(image.width - row - 1) * rowStride],
+                    rowStride, &newImage.pixels[(image.width + row) * rowStride]);
+            }
+
+            image = newImage;
+        }
+
         data.resize(nBlocksX * nBlocksY);
 
         for (size_t blockY = 0; blockY != nBlocksY; ++blockY) {
@@ -48,7 +85,9 @@ struct BlockImage {
     BlockImage(const FlexMatrix<float, blockW * blockH * channels>& dict,
         const std::vector<Index>& indices, size_t nBlocksX, size_t nBlocksY)
     : nBlocksX(nBlocksX)
-    , nBlocksY(nBlocksY) {
+    , nBlocksY(nBlocksY)
+    , actualW(nBlocksX * blockW)
+    , actualH(nBlocksY * blockH) {
         data.resize(nBlocksX * nBlocksY);
         for (size_t idx = 0; idx != nBlocksX * nBlocksY; ++idx) {
             data[idx] = dict[indices[idx]];
@@ -78,7 +117,24 @@ struct BlockImage {
             }
         }
 
-        return image;
+        if (actualW % blockW == 0 && actualH % blockH == 0) {
+            return image;
+        }
+
+        Support::RGB8Image croppedImage;
+        croppedImage.width = actualW;
+        croppedImage.height = actualH;
+        croppedImage.pixels.resize(actualW * actualH * 3);
+
+        const auto rowStride = image.width * channels;
+        const auto croppedStride = actualW * channels;
+
+        for (auto row = 0; row != actualH; ++row) {
+            std::copy_n(&image.pixels[rowStride * row], croppedStride,
+                &croppedImage.pixels[croppedStride * row]);
+        }
+
+        return croppedImage;
     }
 
     //TODO: Function that converts to YCoCg
@@ -180,6 +236,9 @@ int main(int argc, char **args) {
     printf("Reading image %s...", args[1]);
     const auto imagePath = args[1];
     const auto imageBlocks = BlockImage<blockW, blockH>(Support::LoadPNG(imagePath));
+    if (imageBlocks.nBlocksX == 0 || imageBlocks.nBlocksY == 0) {
+        return 0;
+    }
 
     const auto blocksPalette = BlockRGBMean<float, 3 * blockW * blockH>(imageBlocks.data);
     const auto [dictPalette, idxPalette] = VQGenerateDictFast<float, 3, uint16_t>
