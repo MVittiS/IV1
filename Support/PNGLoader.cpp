@@ -9,17 +9,25 @@
 
 namespace VQLib::Support {
 
-    RGB8Image LoadPNG(Path path) {
-        FILE* file = fopen(path, "rb");
-        assert(file);
+RGB8Image LoadPNG(Path path) {
+    static const RGB8Image nullImage = {0, 0, {}};
 
-        png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-        assert(png);
+    FILE* file = fopen(path, "rb");
+    if (!file) {
+        return nullImage;
+    }
 
-        png_infop info = png_create_info_struct(png);
-        assert(info);
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) {
+        return nullImage;
+    }
 
-        png_init_io(png, file);
+    png_infop info = png_create_info_struct(png);
+    if (!info) {
+        return nullImage;
+    }
+
+    png_init_io(png, file);
 
 
     constexpr auto png_transforms = 
@@ -51,13 +59,19 @@ namespace VQLib::Support {
 
 void SavePNG(Path path, const RGB8Image& image) {
     FILE* file = fopen(path, "wb");
-    assert(file);
+    if (!file) {
+        return;
+    }
 
     png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    assert(png);
+    if (!png) {
+        return;
+    }
 
     png_infop info = png_create_info_struct(png);
-    assert(info);
+    if (!info) {
+        return;
+    }
 
     png_init_io(png, file);
 
