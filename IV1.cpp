@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdio>
 #include <type_traits>
 
 using namespace VQLib;
@@ -241,6 +242,67 @@ FlexMatrix<T, width>  BlockRGBAddMean(
     return BlockRGBSubtractMean<T, width>(data, negativeMean);
 }
 
+struct IV1FileHeader {
+    const uint8_t magic[4] = {'I', 'V', 'Y', '1'};
+    uint16_t nBlocksX, nBlocksY;
+    uint32_t actualW, actualH;
+};
+
+void save(const char* path,
+          const FlexMatrix<float, 3>& dict0,
+          const std::vector<uint16_t>& indices0,
+          const FlexMatrix<float, 48>& dict1,
+          const std::vector<uint16_t>& indices1,
+          size_t nBlocksX, size_t nBlocksY,
+          size_t imageW, size_t imageH) {
+
+    FILE* file = fopen(path, "wb");
+    IV1FileHeader header;
+
+    header.nBlocksX = nBlocksX;
+    header.nBlocksY = nBlocksY;
+    header.actualW = imageW;
+    header.actualH = imageH;
+
+    fwrite(&header, 1, sizeof(header), file);
+
+    // Reduce dict0 to uint8, then save
+    for (const auto& block : dict0) {
+        MatrixRow<uint8_t, 3> block8bit;
+        for (auto elem = 0; elem != 3; ++elem) {
+            block8bit[elem] = 255.0f * (block[elem] + 1.0f/510.f);
+        }
+        fwrite(block8bit.data(), 3, 1, file);
+    }
+
+    { // Reduce indices0 to uint8, then save
+        std::vector<uint8_t> indices8bit(indices0.size());
+        std::transform(indices0.begin(), indices0.end(), indices8bit.begin(),
+            [](uint16_t in) { return (uint8_t) in; });
+        
+        fwrite(indices8bit.data(), indices8bit.size(), 1, file);
+    }
+
+    // Reduce dict1 to uint8, then save
+    for (const auto& block : dict1) {
+        MatrixRow<uint8_t, 48> block8bit;
+        for (auto elem = 0; elem != 48; ++elem) {
+            block8bit[elem] = 255.0f * (block[elem] + 1.0f/510.f);
+        }
+        fwrite(block8bit.data(), 48, 1, file);
+    }
+
+    { // Reduce indices1 to uint8, then save
+        std::vector<uint8_t> indices8bit(indices1.size());
+        std::transform(indices1.begin(), indices1.end(), indices8bit.begin(),
+            [](uint16_t in) { return (uint8_t) in; });
+        
+        fwrite(indices8bit.data(), indices8bit.size(), 1, file);
+    }
+
+    fclose(file);
+}    
+
 
 int main(int argc, char **args) {
     constexpr size_t blockW = 4;
@@ -267,10 +329,16 @@ int main(int argc, char **args) {
     auto imgDiff = BlockImage<blockW, blockH>(dictDiff, idxDiff, 
                 imageBlocks.nBlocksX, imageBlocks.nBlocksY);
 
+    char savePath[1024];
+    snprintf(savePath, 1024, "%s.iv1", args[2]);
+    printf("Saving compressed outpus as %s...\n", savePath);
+    save(savePath, dictPalette, idxPalette, dictDiff, idxDiff, 
+        imgDiff.nBlocksX, imgDiff.nBlocksY, imgDiff.actualW, imgDiff.actualH);
+
     imgDiff.data = BlockRGBAddMean<float, 3 * blockW * blockH>(imgDiff.data, imgPalette.data);
     const auto decodedImage = imgDiff.toRGB8Image();
 
-    printf("Writing to image %s...", args[2]);
+    printf("Writing to image %s...\n", args[2]);
     const auto saveImagePath = args[2];
     Support::SavePNG(saveImagePath, decodedImage);
 
