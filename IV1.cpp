@@ -4,6 +4,7 @@
 
 #include "VQLib/C++/VQAlgorithm.h"
 #include "Support/PNGLoader.h"
+#include "ConstexprSqrt.h"
 
 #include <algorithm>
 #include <cassert>
@@ -79,6 +80,18 @@ struct BlockImage {
                 }
             }
         }
+
+        // Finally, YUV scaling.
+        constexpr float weightR = constSqrt(0.2125f);
+        constexpr float weightG = constSqrt(0.7154f);
+        constexpr float weightB = constSqrt(0.0721f);
+        for (auto& sample : data) {
+            for (size_t triad = 0; triad < sample.size() / 3; ++triad) {
+                sample[3 * triad + 0] *= weightR;
+                sample[3 * triad + 1] *= weightG;
+                sample[3 * triad + 2] *= weightB;
+            }
+        }
     }
 
     template<typename Index>
@@ -106,10 +119,15 @@ struct BlockImage {
 
                 for (size_t y = 0; y != blockH; ++y) {
                     for (size_t x = 0; x != blockW; ++x) {
+                        constexpr float yuvWeights[3] = {
+                            1.0f / constSqrt(0.2125f),
+                            1.0f / constSqrt(0.7154f),
+                            1.0f / constSqrt(0.0721f)
+                        };
                         for (size_t ch = 0; ch != channels; ++ch) {
                             image.pixels[((blockY * blockH + y) * image.width +
                                 (blockX * blockW) + x) * 3 + ch] = std::round(std::clamp(
-                                    block[(y * blockW + x) * 3 + ch],   
+                                    block[(y * blockW + x) * 3 + ch] * yuvWeights[ch],   
                                     0.f, 255.f));
                         }
                     }
@@ -136,8 +154,6 @@ struct BlockImage {
 
         return croppedImage;
     }
-
-    //TODO: Function that converts to YCoCg
 };
 
 template <typename T, size_t width>
