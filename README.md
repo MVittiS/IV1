@@ -1,6 +1,6 @@
 # IV1 - A Vector Quantization-based Image Compression Codec
 
-_IV1_ (pronounced "ivy-one") is an extremely low complexity, fixed-ratio lossy image codec. It's not made to be best-in-class in terms of image quality, nor compression ratios, but rather be a simple way to compress lossy images that's very computationally cheap to decode; it actually doesn't even require any multiplication instructions to do so.
+**IV1** (pronounced "ivy-one") is an extremely low complexity, fixed-ratio, lossy image codec. It's not made to be best-in-class in terms of image quality, nor compression ratios, but rather be a simple way to compress lossy images that's very computationally cheap to decode; it actually doesn't even require any multiplication instructions to do so.
 On the other hand, the encoding process is very CPU/arithmetically taxing, though the code is structured in such a way that it's very easy for compilers to vectorize - all characteristics inherited from the C++ implementation of [VQLib](https://github.com/MVittiS/VQLib).
 
 ## How well does it compress?
