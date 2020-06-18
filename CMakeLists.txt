@@ -29,3 +29,26 @@ else()
 	target_compile_options(IV1Compressor PRIVATE -m${SIMD_ISA_GCClang} -ffast-math)
 endif()
 
+project(IV1Roundtrip)
+	find_package(PNG REQUIRED)
+	include_directories(${PNG_INCLUDE_DIR})
+
+	add_executable(IV1Roundtrip 
+		IV1round.cpp
+		IV1BlockImage.h
+		IV1File.h
+		Support/PNGLoader.h
+		Support/PNGLoader.cpp
+		VQLib/C++/VQDataTypes.h
+		VQLib/C++/VQArithmetic.h
+		VQLib/C++/VQAlgorithm.h)
+
+	target_link_libraries(IV1Roundtrip ${PNG_LIBRARY})
+	if (MSVC)
+		target_compile_options(IV1Roundtrip PRIVATE /arch:${SIMD_ISA_MSVC})
+		if (MSVC_Generate_Profiling)
+			target_link_options(IV1Roundtrip PRIVATE /PROFILE)
+		endif()
+	else()
+		target_compile_options(IV1Roundtrip PRIVATE -m${SIMD_ISA_GCClang} -ffast-math)
+	endif()
