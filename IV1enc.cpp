@@ -3,6 +3,7 @@
 #define VQLIB_VERBOSE_OUTPUT 1
 
 #include "VQLib/C++/VQAlgorithm.h"
+#include "Support/PNGLoader.h"
 
 #include "IV1BlockImage.h"
 #include "IV1File.h"

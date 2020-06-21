@@ -1,7 +1,7 @@
 #pragma once
 
 #include "VQLib/C++/VQDataTypes.h"
-#include "Support/PNGLoader.h"
+#include "Support/RGB8Image.h"
 
 #include "ConstexprSqrt.h"
 
