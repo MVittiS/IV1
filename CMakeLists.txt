@@ -76,3 +76,27 @@ project(IV1Roundtrip)
 	else()
 		target_compile_options(IV1Roundtrip PRIVATE -m${SIMD_ISA_GCClang} -ffast-math)
 	endif()
+
+project(IV1DictViewer)
+	find_package(PNG REQUIRED)
+	include_directories(${PNG_INCLUDE_DIR})
+
+	add_executable(IV1DictView 
+		IV1dictview.cpp
+		IV1BlockImage.h
+		IV1File.h
+		Support/PNGLoader.h
+		Support/PNGLoader.cpp
+		VQLib/C++/VQDataTypes.h
+		VQLib/C++/VQArithmetic.h
+		VQLib/C++/VQAlgorithm.h)
+
+	target_link_libraries(IV1DictView ${PNG_LIBRARY})
+	if (MSVC)
+		target_compile_options(IV1DictView PRIVATE /arch:${SIMD_ISA_MSVC})
+		if (MSVC_Generate_Profiling)
+			target_link_options(IV1DictView PRIVATE /PROFILE)
+		endif()
+	else()
+		target_compile_options(IV1DictView PRIVATE -m${SIMD_ISA_GCClang} -ffast-math)
+	endif()
