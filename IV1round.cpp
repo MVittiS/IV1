@@ -19,7 +19,7 @@ int main(int argc, char **args) {
     constexpr size_t blockW = 4;
     constexpr size_t blockH = 4;
     if (argc < 3) {
-        printf("Usage: IV1compress(.exe) image_input.png image_output.png");
+        printf("Usage: IV1round(.exe) image_input.png image_output.png");
     }
 
     printf("Reading image %s...", args[1]);

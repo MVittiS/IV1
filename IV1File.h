@@ -2,6 +2,9 @@
 
 #include "IV1BlockImage.h"
 
+#include <algorithm>
+#include <cstring>
+
 struct IV1FileHeader {
     const uint8_t magic[4] = {'I', 'V', 'Y', '1'};
     uint16_t nBlocksX, nBlocksY;
@@ -16,7 +19,7 @@ void save(const char* path,
           size_t nBlocksX, size_t nBlocksY,
           size_t imageW, size_t imageH) {
 
-    FILE* file = fopen(path, "wb");
+    FILE* file = strncmp("-", path, 1) == 0 ? stdout : fopen(path, "wb");
     IV1FileHeader header;
 
     header.nBlocksX = nBlocksX;
@@ -30,7 +33,7 @@ void save(const char* path,
     for (const auto& block : dict0) {
         MatrixRow<uint8_t, 3> block8bit;
         for (auto elem = 0; elem != 3; ++elem) {
-            block8bit[elem] = 255.0f * (block[elem] + 1.0f/510.f);
+            block8bit[elem] = std::clamp(std::round(block[elem]), 0.0f, 255.0f);
         }
         fwrite(block8bit.data(), 3, 1, file);
     }
@@ -47,7 +50,7 @@ void save(const char* path,
     for (const auto& block : dict1) {
         MatrixRow<uint8_t, 48> block8bit;
         for (auto elem = 0; elem != 48; ++elem) {
-            block8bit[elem] = 255.0f * (block[elem] + 1.0f/510.f);
+            block8bit[elem] = std::clamp(std::round((block[elem] + 255.0f)/2.0f), 0.0f, 255.0f);
         }
         fwrite(block8bit.data(), 48, 1, file);
     }
@@ -71,10 +74,9 @@ struct IV1File {
     std::vector<uint16_t> indices1;
 
     IV1File(const char* path) {
-        auto file = fopen(path, "rb");
+        auto file = strncmp("-", path, 1) == 0 ? stdin : fopen(path, "rb");
         fread(&header, 1, sizeof(IV1FileHeader), file);
 
-        constexpr float inv255 = 1.0f/255.0f;
         const size_t numBlocks = header.nBlocksX * header.nBlocksY;
         
         dict0.resize(256);
@@ -83,7 +85,7 @@ struct IV1File {
             MatrixRow<uint8_t, 3> block8bit;
             fread(block8bit.data(), 3, 1, file);
             for (auto elem = 0; elem != 3; ++elem) {
-                dict0[idx][elem] = (block8bit[elem] * inv255) - 1.0f/510.f;
+                dict0[idx][elem] = block8bit[elem];
             }
         }
 
@@ -98,20 +100,21 @@ struct IV1File {
 
         dict1.resize(256);
         // Load, then expand dict1 to float
-        for (const auto& block : dict1) {
+        for (auto& block : dict1) {
             MatrixRow<uint8_t, 48> block8bit;
+            fread(block8bit.data(), 48, 1, file);
             for (auto elem = 0; elem != 48; ++elem) {
-                block8bit[elem] = (block8bit[elem] * inv255 / 2.0f) - 256.0f/510.f;
+                block[elem] = 2.0f * (block8bit[elem] - 127.5f);
             }
-            fwrite(block8bit.data(), 48, 1, file);
         }
 
-        { // Reduce indices1 to uint8, then save
-            std::vector<uint8_t> indices8bit(indices1.size());
-            std::transform(indices1.begin(), indices1.end(), indices8bit.begin(),
-                [](uint16_t in) { return (uint8_t) in; });
-            
-            fwrite(indices8bit.data(), indices8bit.size(), 1, file);
+        { // Load, then expand indices1 to uint16
+            std::vector<uint8_t> indices8bit(numBlocks);
+            fread(indices8bit.data(), indices8bit.size(), 1, file);
+
+            indices1.resize(numBlocks);
+            std::transform(indices8bit.begin(), indices8bit.end(), indices1.begin(),
+                [](uint8_t in) { return (uint16_t) in; });
         }
 
         fclose(file);
