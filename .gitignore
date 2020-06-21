@@ -1,3 +1,4 @@
+build/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
@@ -5,4 +6,5 @@ cmake_install.cmake
 Makefile
 *.xcodeproj/
 .vs/
+.vscode/
 *.sln
